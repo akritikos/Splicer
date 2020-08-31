@@ -1,6 +1,7 @@
 namespace Nessos.Expressions.Splicer
 {
 	using System;
+	using System.Collections.Generic;
 	using System.Linq;
 	using System.Linq.Expressions;
 
@@ -17,25 +18,44 @@ namespace Nessos.Expressions.Splicer
 			name = m.Method.Name;
 			if (name == "Invoke")
 			{
-				var thunk = Expression.Lambda<Func<object>>(m.Arguments[0], new ParameterExpression[0]);
+				var thunk = Expression.Lambda<Func<object>>(m.Arguments[0], Array.Empty<ParameterExpression>());
 				func = thunk.Compile().DynamicInvoke() as Expression;
+				args = Enumerable.Range(1, m.Arguments.Count - 1).Select(i => m.Arguments[i]).ToArray();
 			}
 			else
 			{
-				func = m.Arguments[0];
+				func = null;
+				args = null;
 			}
-
-			args = Enumerable.Range(1, m.Arguments.Count - 1).Select(i => m.Arguments[i]).ToArray();
 		}
 
+		public static List<T> Append<T>(this List<T> xs, T x)
+		{
+			xs.Add(x);
+			return xs;
+		}
+
+		public static Func<T, R> Compile<T, R>(this Func<Expression<Func<T>>, Expression<Func<R>>> f)
+		{
+			var param = Expression.Parameter(typeof(T));
+			var lambda = Expression.Lambda<Func<T, R>>(f(Expression.Lambda<Func<T>>(param)).Body, param);
+			var _lambda = lambda.Splice();
+			return _lambda.Compile();
+		}
+
+		public static TResult Invoke<TResult>(this Expression<Func<TResult>> f)
+			=> throw new NotImplementedException("Stump call");
+
 		public static TResult Invoke<TSource, TResult>(this Expression<Func<TSource, TResult>> f, TSource src)
-			=> throw new Exception("Stump call");
+			=> throw new NotImplementedException("Stump call");
 
 		public static TResult Invoke<TSource0, TSource1, TResult>(
-			this Expression<Func<TSource0, TSource1, TResult>> f,
-			TSource0 src0,
-			TSource1 src1)
-			=> throw new Exception("Stump call");
+			this Expression<Func<TSource0, TSource1, TResult>> f, TSource0 src0, TSource1 src1)
+			=> throw new NotImplementedException("Stump call");
+
+		public static Expression<Func<TResult>> Splice<TResult>(
+			this Expression<Func<TResult>> lambda)
+			=> Splicer.Visit(lambda) as Expression<Func<TResult>>;
 
 		public static Expression<Func<TSource, TResult>> Splice<TSource, TResult>(
 			this Expression<Func<TSource, TResult>> lambda)

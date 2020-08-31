@@ -10,9 +10,9 @@ namespace Nessos.Expressions.Splicer
 			var (name, method, args) = node;
 			if (name == "Invoke" && method is LambdaExpression lambda)
 			{
-				var env = lambda.Parameters.Zip(args, (param, arg) => (param, arg: base.Visit(arg)))
+				var env = lambda.Parameters.Zip(args, (param, arg) => (param, arg))
 					.ToDictionary(t => t.param, t => t.arg);
-				return new Subs(env).Visit(lambda.Body);
+				return base.Visit(new Subs(env).Visit(lambda.Body));
 			}
 
 			return base.VisitMethodCall(node);
